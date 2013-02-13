@@ -12,7 +12,7 @@ rlm_dhcp		OK
 rlm_digest		DONE
 rlm_dynamic_clients	OK
 rlm_eap			DONE
-rlm_eap2
+rlm_eap2		DONE
 rlm_example		OK
 rlm_exec		OK
 rlm_expiration		OK
@@ -32,15 +32,15 @@ rlm_pap			DONE
 rlm_passwd		OK
 rlm_perl		DONE
 rlm_policy		REMOVED
-rlm_preprocess
-rlm_python
+rlm_preprocess		DONE
+rlm_python		DONE
 rlm_radutmp		DONE
 rlm_realm		DONE
-rlm_redis
-rlm_rediswho
+rlm_redis		OK
+rlm_rediswho		DONE
 rlm_replicate		OK
-rlm_rest
-rlm_ruby
+rlm_rest		DONE
+rlm_ruby		DONE
 rlm_securid		DONE
 rlm_sim_files		DONE
 rlm_smsotp		OK
