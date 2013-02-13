@@ -104,12 +104,12 @@ static int attr_filter_getfile(const char *filename, PAIR_LIST **pair_list)
 		     * and we ignore Fall-Through,
 		     * then bitch about it, giving a good warning message.
 		     */
-		     if ((vp->vendor == 0) &&
-			 (vp->attribute > 0xff) &&
-			 (vp->attribute > 1000)) {
+		     if ((vp->da->vendor == 0) &&
+			 (vp->da->attribute > 0xff) &&
+			 (vp->da->attribute > 1000)) {
 			log_debug("[%s]:%d WARNING! Check item \"%s\"\n"
 				  "\tfound in filter list for realm \"%s\".\n",
-				  filename, entry->lineno, vp->name,
+				  filename, entry->lineno, vp->da->name,
 				  entry->name);
 		    }
 		}
@@ -282,13 +282,13 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request,
 				 *	is always true.
 				 */
 				if ((check_item->attribute == PW_VENDOR_SPECIFIC) &&
-					(vp->vendor != 0) &&
+					(vp->da->vendor != 0) &&
 					(check_item->op == T_OP_CMP_TRUE)) {
 					pass++;
 					continue;
 				}
 
-				if (vp->attribute == check_item->attribute) {
+				if (vp->da->attribute == check_item->attribute) {
 					check_pair(check_item, vp,
 						   &pass, &fail);
 				}
@@ -301,7 +301,7 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request,
 			 */
 			if (fail == 0 && (pass > 0 || relax_filter)) {
 				if (!pass) {
-					RDEBUG3("Attribute (%s) allowed by relaxed mode", vp->name);
+					RDEBUG3("Attribute (%s) allowed by relaxed mode", vp->da->name);
 				}
 				*output_tail = paircopyvp(vp);
 				if (!*output_tail) {

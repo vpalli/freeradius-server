@@ -1050,7 +1050,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 		if (!to_list[i]) continue;
 		
 		vp = to_list[i];
-		RDEBUG4("::: to[%d] = %s", i, vp->name);
+		RDEBUG4("::: to[%d] = %s", i, vp->da->name);
 
 		/*
 		 *	Mash the operator to a simple '='.  The
@@ -1064,15 +1064,15 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 		/*
 		 *	Fix dumb cache issues
 		 */
-		if (fixup && (vp->vendor == 0)) {
-			if ((vp->attribute == PW_USER_NAME) &&
+		if (fixup && (vp->da->vendor == 0)) {
+			if ((vp->da->attribute == PW_USER_NAME) &&
 			    !fixup->username) {
 				fixup->username = vp;
 
-			} else if (vp->attribute == PW_STRIPPED_USER_NAME) {
+			} else if (vp->da->attribute == PW_STRIPPED_USER_NAME) {
 				fixup->username = vp;
 
-			} else if (vp->attribute == PW_USER_PASSWORD) {
+			} else if (vp->da->attribute == PW_USER_PASSWORD) {
 				fixup->password = vp;
 			}
 		}
@@ -1197,9 +1197,9 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 		cp = cf_itemtopair(ci);
 
 #ifndef NDEBUG
-		if (debug_flag && (vp->vendor == 0) &&
-		    radius_find_compare(vp->attribute)) {
-			DEBUG("WARNING: You are modifying the value of virtual attribute %s.  This is not supported.", vp->name);
+		if (debug_flag && (vp->da->vendor == 0) &&
+		    radius_find_compare(vp->da->attribute)) {
+			DEBUG("WARNING: You are modifying the value of virtual attribute %s.  This is not supported.", vp->da->name);
 		}
 #endif
 
@@ -1220,7 +1220,7 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 
 			if (!pairparsevalue(vp, value)) {
 				RDEBUG2("ERROR: Failed parsing value \"%s\" for attribute %s: %s",
-				       value, vp->name, fr_strerror());
+				       value, vp->da->name, fr_strerror());
 				pairfree(&newlist);
 				return RLM_MODULE_FAIL;
 			}

@@ -435,7 +435,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 
 	tail = &packet->vps;
 
-	vp = paircreate(PW_VQP_PACKET_TYPE, 0, PW_TYPE_INTEGER);
+	vp = paircreate(PW_VQP_PACKET_TYPE, 0);
 	if (!vp) {
 		fr_strerror_printf("No memory");
 		return -1;
@@ -446,7 +446,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 	*tail = vp;
 	tail = &(vp->next);
 
-	vp = paircreate(PW_VQP_ERROR_CODE, 0, PW_TYPE_INTEGER);
+	vp = paircreate(PW_VQP_ERROR_CODE, 0);
 	if (!vp) {
 		fr_strerror_printf("No memory");
 		return -1;
@@ -457,7 +457,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 	*tail = vp;
 	tail = &(vp->next);
 
-	vp = paircreate(PW_VQP_SEQUENCE_NUMBER, 0, PW_TYPE_INTEGER);
+	vp = paircreate(PW_VQP_SEQUENCE_NUMBER, 0);
 	if (!vp) {
 		fr_strerror_printf("No memory");
 		return -1;
@@ -485,7 +485,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 		 *	Hack to get the dictionaries to work correctly.
 		 */
 		attribute |= 0x2000;
-		vp = paircreate(attribute, 0, PW_TYPE_OCTETS);
+		vp = paircreate(attribute, 0);
 		if (!vp) {
 			pairfree(&packet->vps);
 
@@ -493,14 +493,20 @@ int vqp_decode(RADIUS_PACKET *packet)
 			return -1;
 		}
 
-		switch (vp->type) {
+		switch (vp->da->type) {
 		case PW_TYPE_IPADDR:
 			if (length == 4) {
 				memcpy(&vp->vp_ipaddr, ptr, 4);
 				vp->length = 4;
 				break;
 			}
-			vp->type = PW_TYPE_OCTETS;
+			
+			/*
+			 *	Value doesn't match the type we have for the
+			 *	valuepair so we must change it's da to an
+			 *	unknown attr.
+			 */
+			vp->da = dict_attrunknown(vp->da->attr, vp->da->vendor);
 			/* FALL-THROUGH */
 
 		default:
@@ -665,7 +671,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		ptr[0] = 0;
 		ptr[1] = 0;
 		ptr[2] = 0x0c;
-		ptr[3] = vp->attribute & 0xff;
+		ptr[3] = vp->da->attr & 0xff;
 
 		/* Length */
 		ptr[4] = 0;
@@ -674,7 +680,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		ptr += 6;
 
 		/* Data */
-		switch (vp->type) {
+		switch (vp->da->type) {
 		case PW_TYPE_IPADDR:
 			memcpy(ptr, &vp->vp_ipaddr, 4);
 			break;

@@ -314,11 +314,11 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		if (!vp) return 0;
 
 		if (do_number) {
-			if ((vp->type != PW_TYPE_IPADDR) &&
-			    (vp->type != PW_TYPE_INTEGER) &&
-			    (vp->type != PW_TYPE_SHORT) &&
-			    (vp->type != PW_TYPE_BYTE) &&
-			    (vp->type != PW_TYPE_DATE)) {
+			if ((vp->da->type != PW_TYPE_IPADDR) &&
+			    (vp->da->type != PW_TYPE_INTEGER) &&
+			    (vp->da->type != PW_TYPE_SHORT) &&
+			    (vp->da->type != PW_TYPE_BYTE) &&
+			    (vp->da->type != PW_TYPE_DATE)) {
 				*out = '\0';
 				return 0;
 			}
@@ -487,7 +487,7 @@ static size_t xlat_integer(UNUSED void *instance, REQUEST *request,
 		return 0;
 	}
 
-	switch (vp->type)
+	switch (vp->da->type)
 	{		
 		case PW_TYPE_OCTETS:
 		case PW_TYPE_STRING:
@@ -652,7 +652,7 @@ static size_t xlat_string(UNUSED void *instance, REQUEST *request,
 
 	if ((radius_get_vp(request, fmt, &vp) < 0) || !vp) goto nothing;
 
-	if (vp->type != PW_TYPE_OCTETS) goto nothing;
+	if (vp->da->type != PW_TYPE_OCTETS) goto nothing;
 
 	len = fr_print_string(vp->vp_strvalue, vp->length, out, outlen);
 	out[len] = '\0';

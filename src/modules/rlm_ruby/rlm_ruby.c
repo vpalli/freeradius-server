@@ -231,9 +231,9 @@ static int ruby_function(REQUEST *request, int func, VALUE module, const char *f
 
             /* The name. logic from vp_prints, lib/print.c */
             if (vp->flags.has_tag) {
-                snprintf(buf, BUF_SIZE, "%s:%d", vp->name, vp->flags.tag);
+                snprintf(buf, BUF_SIZE, "%s:%d", vp->da->name, vp->tag);
             } else {
-                strcpy(buf, vp->name);
+                strcpy(buf, vp->da->name);
             }
             VALUE rbString1 = rb_str_new2(buf);
             /* The value. Use delimiter - don't know what that means */

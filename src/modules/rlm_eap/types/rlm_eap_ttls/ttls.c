@@ -263,7 +263,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 		 *	If it's a type from our dictionary, then
 		 *	we need to put the data in a relevant place.
 		 */
-		switch (vp->type) {
+		switch (vp->da->type) {
 		case PW_TYPE_INTEGER:
 		case PW_TYPE_DATE:
 			if (size != vp->length) {
@@ -272,7 +272,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 				 *	attribute.
 				 */
 		raw:
-				vp = paircreate_raw(vp->attribute, vp->vendor,
+				vp = paircreate_raw(vp->da->attribute, vp->da->vendor,
 						    PW_TYPE_OCTETS, vp);
 				vp->length = size;
 				memcpy(vp->vp_octets, data, vp->length);
@@ -388,7 +388,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 		 *	NOTE: This means that the User-Password
 		 *	attribute CANNOT EVER have embedded zeros in it!
 		 */
-		if ((vp->vendor == 0) && (vp->attribute == PW_USER_PASSWORD)) {
+		if ((vp->da->vendor == 0) && (vp->da->attribute == PW_USER_PASSWORD)) {
 			/*
 			 *	If the password is exactly 16 octets,
 			 *	it won't be zero-terminated.
@@ -419,8 +419,8 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 		 *	But if the client gets the challenge correct,
 		 *	we're not too worried about the Id.
 		 */
-		if (((vp->vendor == 0) && (vp->attribute == PW_CHAP_CHALLENGE)) ||
-		    ((vp->vendor == VENDORPEC_MICROSOFT) && (vp->attribute == PW_MSCHAP_CHALLENGE))) {
+		if (((vp->da->vendor == 0) && (vp->da->attribute == PW_CHAP_CHALLENGE)) ||
+		    ((vp->da->vendor == VENDORPEC_MICROSOFT) && (vp->da->attribute == PW_MSCHAP_CHALLENGE))) {
 			uint8_t	challenge[16];
 
 			if ((vp->length < 8) ||
@@ -520,12 +520,12 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 		 *	issues.
 		 */
 		length = vp->length;
-		vendor = vp->vendor;
+		vendor = vp->da->vendor;
 		if (vendor != 0) {
-			attr = vp->attribute & 0xffff;
+			attr = vp->da->attribute & 0xffff;
 			length |= (1 << 31);
 		} else {
-			attr = vp->attribute;
+			attr = vp->da->attribute;
 		}
 
 		/*
@@ -560,7 +560,7 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 			total += 4;
 		}
 
-		switch (vp->type) {
+		switch (vp->da->type) {
 		case PW_TYPE_INTEGER:
 		case PW_TYPE_DATE:
 			attr = htonl(vp->vp_integer); /* stored in host order */
@@ -1135,8 +1135,8 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			 *	The attribute is a server-side thingy,
 			 *	don't copy it.
 			 */
-			if ((vp->attribute > 255) &&
-			    (vp->vendor == 0)) {
+			if ((vp->da->attribute > 255) &&
+			    (vp->da->vendor == 0)) {
 				continue;
 			}
 
@@ -1149,14 +1149,14 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			 *	AND attributes which are copied there
 			 *	from below.
 			 */
-			if (pairfind(fake->packet->vps, vp->attribute, vp->vendor, TAG_ANY)) {
+			if (pairfind(fake->packet->vps, vp->da->attribute, vp->da->vendor, TAG_ANY)) {
 				continue;
 			}
 
 			/*
 			 *	Some attributes are handled specially.
 			 */
-			switch (vp->attribute) {
+			switch (vp->da->attribute) {
 				/*
 				 *	NEVER copy Message-Authenticator,
 				 *	EAP-Message, or State.  They're
@@ -1184,7 +1184,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			 *	Don't copy from the head, we've already
 			 *	checked it.
 			 */
-			copy = paircopy2(vp, vp->attribute, vp->vendor, TAG_ANY);
+			copy = paircopy2(vp, vp->da->attribute, vp->da->vendor, TAG_ANY);
 			pairadd(&fake->packet->vps, copy);
 		}
 	}

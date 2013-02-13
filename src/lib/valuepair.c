@@ -45,182 +45,105 @@ static const char *months[] = {
         "jan", "feb", "mar", "apr", "may", "jun",
         "jul", "aug", "sep", "oct", "nov", "dec" };
 
-/*
- *	This padding is necessary only for attributes that are NOT
- *	in the dictionary, and then only because the rest of the
- *	code accesses vp->name directly, rather than through an
- *	accessor function.
+/** Dynamically allocate a new attribute
  *
- *	The name padding has to be large enough for:
+ * Allocates a new attribute and a new dictionary attr if no DA is provided.
  *
- *		Attr-{3}.{8}.{3}.{3}.{3}.{3}
- *
- *	i.e. 28 characters, plus a zero.  We add some more bytes for
- *	padding, because the VALUE_PAIR structure may be un-aligned.
- *
- *	The result is that for the normal case, the server uses a less
- *	memory (36 bytes * number of VALUE_PAIRs).
+ * @param[in] da Specifies the dictionary attribute to build the VP from.
+ * @return a new value pair or NULL if an error occurred.
  */
-#define FR_VP_NAME_PAD (32)
-#define FR_VP_NAME_LEN (30)
-
 VALUE_PAIR *pairalloc(const DICT_ATTR *da)
 {
-	size_t name_len = 0;
 	VALUE_PAIR *vp;
 
 	/*
-	 *	Not in the dictionary: the name is allocated AFTER
-	 *	the VALUE_PAIR struct.
+	 *	Caller must specify a da else we don't know what the attribute
+	 *	type is.
 	 */
-	if (!da) name_len = FR_VP_NAME_PAD;
+	if (!da) return NULL;
 
-	vp = malloc(sizeof(*vp) + name_len);
+	vp = malloc(sizeof(*vp));
 	if (!vp) {
 		fr_strerror_printf("Out of memory");
 		return NULL;
 	}
 	memset(vp, 0, sizeof(*vp));
-
-	if (da) {
-		vp->attribute = da->attr;
-		vp->vendor = da->vendor;
-		vp->type = da->type;
-		vp->name = da->name;
-		vp->flags = da->flags;
-	} else {
-		vp->attribute = 0;
-		vp->vendor = 0;
-		vp->type = PW_TYPE_OCTETS;
-		vp->name = NULL;
-		memset(&vp->flags, 0, sizeof(vp->flags));
-		vp->flags.is_unknown = 1;
-	}
-	vp->op = T_OP_EQ;
-
-	switch (vp->type) {
-		case PW_TYPE_BYTE:
-			vp->length = 1;
-			break;
-
-		case PW_TYPE_SHORT:
-			vp->length = 2;
-			break;
-
-		case PW_TYPE_INTEGER:
-		case PW_TYPE_IPADDR:
-		case PW_TYPE_DATE:
-		case PW_TYPE_SIGNED:
-			vp->length = 4;
-			break;
-
-		case PW_TYPE_INTEGER64:
-			vp->length = 8;
-			break;
-
-		case PW_TYPE_IFID:
-			vp->length = sizeof(vp->vp_ifid);
-			break;
-
-		case PW_TYPE_IPV6ADDR:
-			vp->length = sizeof(vp->vp_ipv6addr);
-			break;
-
-		case PW_TYPE_IPV6PREFIX:
-			vp->length = sizeof(vp->vp_ipv6prefix);
-			break;
-
-		case PW_TYPE_IPV4PREFIX:
-			vp->length = sizeof(vp->vp_ipv4prefix);
-			break;
-
-		case PW_TYPE_ETHERNET:
-			vp->length = sizeof(vp->vp_ether);
-			break;
-
-		case PW_TYPE_TLV:
-			vp->vp_tlv = NULL;
-			vp->length = 0;
-			break;
-
-		case PW_TYPE_COMBO_IP:
-		default:
-			vp->length = 0;
-			break;
-	}
-
-	return vp;
-}
-
-/*
- *	Create a new valuepair.
- */
-VALUE_PAIR *paircreate_raw(int attr, int vendor, int type, VALUE_PAIR *vp)
-{
-	char *p = (char *) (vp + 1);
-
-	if (!vp->flags.is_unknown) {
-		pairfree(&vp);
-		return NULL;
-	}
-
-	vp->vendor = vendor;
-	vp->attribute = attr;
-	vp->op = T_OP_EQ;
-	vp->name = p;
-	vp->type = type;
-	vp->length = 0;
-	memset(&vp->flags, 0, sizeof(vp->flags));
-	vp->flags.is_unknown = 1;
 	
-	if (!vp_print_name(p, FR_VP_NAME_LEN, vp->attribute, vp->vendor)) {
-		free(vp);
-		return NULL;
-	}
+	vp->da = da;
+	vp->op = T_OP_EQ;
 
 	return vp;
 }
 
-/*
- *	Create a new valuepair.
+/** Create a new valuepair and dictionary entry
+ *
+ * For use where there is no dictionary entry for the valuepair being
+ * created.
+ *
+ * @param[in] attr number.
+ * @param[in] vendor number.
+ * @return the new valuepair or NULL on error.
  */
-VALUE_PAIR *paircreate(int attr, int vendor, int type)
+VALUE_PAIR *paircreate_unknown(unsigned int attr, unsigned int vendor)
 {
-	VALUE_PAIR	*vp;
-	const DICT_ATTR	*da;
+	const DICT_ATTR *da;
+	
+	da = dict_attrunknown(attr, vendor);
+	if (!da) {
+		return NULL;	
+	}
+	
+	return pairalloc(da);
+}
+
+/** Create a new valuepair
+ * 
+ * For use when the attribute/vendor are known to exist. Will lookup attr
+ * and vendor in dictionary and return NULL if they're not found.
+ * 
+ * @param[in] attr number.
+ * @param[in] vendor number.
+ * @return the new valuepair or NULL on error.
+ */
+VALUE_PAIR *paircreate(unsigned int attr, unsigned int vendor)
+{
+	const DICT_ATTR *da;
 
 	da = dict_attrbyvalue(attr, vendor);
-	if ((vp = pairalloc(da)) == NULL) {
+	if (!da) {
 		return NULL;
 	}
 
-	/*
-	 *	It isn't in the dictionary: update the name.
-	 */
-	if (!da) return paircreate_raw(attr, vendor, type, vp);
-
-	return vp;
+	return pairalloc(da);
 }
 
-/*
- *      release the memory used by a single attribute-value pair
- *      just a wrapper around free() for now.
+/** Free memory used by a single valuepair.
+ * 
+ * @todo TLV: needs to die in fire.
  */
 void pairbasicfree(VALUE_PAIR *pair)
 {
-	if (pair->type == PW_TYPE_TLV) free(pair->vp_tlv);
+	if (pair->da->type == PW_TYPE_TLV) {
+		free(pair->vp_tlv);
+	}
+	
+	/*
+	 *	Only frees the da if it's dynamically allocated.
+	 */
+	dict_attr_free(&(pair->da));
+	
 	/* clear the memory here */
 	memset(pair, 0, sizeof(*pair));
 	free(pair);
 }
 
-/*
- *	Release the memory used by a list of attribute-value
- *	pairs, and sets the pair pointer to NULL.
+/** Free memory used by a valuepair list.
+ * 
+ * @todo TLV: needs to free all dependents of each VP freed.
  */
 void pairfree(VALUE_PAIR **pair_ptr)
 {
-	VALUE_PAIR	*next, *pair;
+	VALUE_PAIR *next, *pair;
 
 	if (!pair_ptr) return;
 	pair = *pair_ptr;
@@ -234,17 +157,40 @@ void pairfree(VALUE_PAIR **pair_ptr)
 	*pair_ptr = NULL;
 }
 
-
-/*
- *	Find the pair with the matching attribute
+/** Mark malformed or unrecognised attributed as unknown
+ *
+ * @param vp to change DICT_ATTR of.
+ * @return 0 on success (or if already unknown) else -1 on error.
  */
-VALUE_PAIR * pairfind(VALUE_PAIR *first, unsigned int attr, unsigned int vendor,
+int pair2unknown(VALUE_PAIR *vp)
+{
+	const DICT_ATTR *da;
+	
+	if (vp->da->flags.is_unknown) {
+		return 0;
+	}
+	
+	da = dict_attrunknown(vp->da->attr, vp->da->vendor);
+	if (!da) {
+		return -1;
+	}
+	
+	vp->da = da;
+	
+	return 0;
+}
+
+/** Find the pair with the matching attribute
+ *
+ * @todo should take DAs and do a pointer comparison.
+ */
+VALUE_PAIR *pairfind(VALUE_PAIR *first, unsigned int attr, unsigned int vendor,
 		      int8_t tag)
 {
 	while (first) {
-		if ((first->attribute == attr) && (first->vendor == vendor)
-		    && ((tag == TAG_ANY) ||
-		        (first->flags.has_tag && (first->flags.tag == tag)))) {
+		if ((first->da->attr == attr) && (first->da->vendor == vendor)
+		    && ((tag == TAG_ANY) || (first->da->flags.has_tag &&
+		        (first->tag == tag)))) {
 			return first;
 		}
 		first = first->next;
@@ -262,6 +208,8 @@ VALUE_PAIR * pairfind(VALUE_PAIR *first, unsigned int attr, unsigned int vendor,
  * @param[in] attr to match.
  * @param[in] vendor to match.
  * @param[in] tag to match. TAG_ANY matches any tag, TAG_UNUSED matches tagless VPs.
+ *
+ * @todo should take DAs and do a point comparison.
  */
 void pairdelete(VALUE_PAIR **first, unsigned int attr, unsigned int vendor,
 		int8_t tag)
@@ -271,9 +219,9 @@ void pairdelete(VALUE_PAIR **first, unsigned int attr, unsigned int vendor,
 
 	for(i = *first; i; i = next) {
 		next = i->next;
-		if ((i->attribute == attr) && (i->vendor == vendor) &&
+		if ((i->da->attr == attr) && (i->da->vendor == vendor) &&
 		    ((tag == TAG_ANY) ||
-		     (i->flags.has_tag && (i->flags.tag == tag)))) {
+		     (i->da->flags.has_tag && (i->tag == tag)))) {
 			*last = next;
 			pairbasicfree(i);
 		} else {
@@ -310,6 +258,7 @@ void pairadd(VALUE_PAIR **first, VALUE_PAIR *add)
  * Walks over 'first', and replaces the first VP that matches 'replace'.
  * 
  * @note Memory used by the VP being replaced will be freed.
+ * @note Will not work with unknown attributes.
  * 
  * @param[in,out] first VP in linked list. Will search and replace in this list.
  * @param[in] replace VP to replace.
@@ -337,9 +286,8 @@ void pairreplace(VALUE_PAIR **first, VALUE_PAIR *replace)
 		 *	Found the first attribute, replace it,
 		 *	and return.
 		 */
-		if ((i->attribute == replace->attribute) &&
-		    (i->vendor == replace->vendor) &&
-		    (!i->flags.has_tag || (i->flags.tag == replace->flags.tag))
+		if ((i->da == replace->da) &&
+		    (!i->da->flags.has_tag || (i->tag == replace->tag))
 		) {
 			*prev = replace;
 
@@ -367,39 +315,34 @@ void pairreplace(VALUE_PAIR **first, VALUE_PAIR *replace)
 
 /** Copy a single valuepair
  *
- * Copy the head of the vp list.
- * 
+ * Allocate a new valuepair and copy the da from the old vp.
+ *
  * @param[in] vp to copy.
- * @return a copy of the input VP
+ * @return a copy of the input VP or NULL on error.
  */
 VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
 {
-	size_t name_len;
 	VALUE_PAIR *n;
 
 	if (!vp) return NULL;
 	
-	if (!vp->flags.is_unknown) {
-		name_len = 0;
-	} else {
-		name_len = FR_VP_NAME_PAD;
-	}
-	
-	if ((n = malloc(sizeof(*n) + name_len)) == NULL) {
+	n = malloc(sizeof(*n));
+	if (!n) {
 		fr_strerror_printf("out of memory");
 		return NULL;
 	}
-	memcpy(n, vp, sizeof(*n) + name_len);
-
-	/*
-	 *	Reset the name field to point to the NEW attribute,
-	 *	rather than to the OLD one.
-	 */
-	if (vp->flags.is_unknown) n->name = (char *) (n + 1);
-
+	
+	memcpy(n, vp, sizeof(*n));
+	n->da = dict_attr_copy(vp->da);
+	if (!n->da) {
+		free(n);
+		
+		return NULL;
+	}
+	
 	n->next = NULL;
 
-	if ((n->type == PW_TYPE_TLV) &&
+	if ((n->da->type == PW_TYPE_TLV) &&
 	    (n->vp_tlv != NULL)) {
 		n->vp_tlv = malloc(n->length);
 		memcpy(n->vp_tlv, vp->vp_tlv, n->length);
@@ -410,8 +353,7 @@ VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
 
 /** Copy data from one VP to another
  *
- * Allocate a new pair using da, and copy over the value from the specified
- * vp.
+ * Allocate a new pair using da, and copy over the value from the specified vp.
  *
  * @todo Should be able to do type conversions.
  * 
@@ -425,7 +367,7 @@ VALUE_PAIR *paircopyvpdata(const DICT_ATTR *da, const VALUE_PAIR *vp)
 
 	if (!vp) return NULL;
 
-	if (da->type != vp->type) return NULL;
+	if (da->type != vp->da->type) return NULL;
 	
 	n = pairalloc(da);
 	if (!n) {
@@ -436,7 +378,7 @@ VALUE_PAIR *paircopyvpdata(const DICT_ATTR *da, const VALUE_PAIR *vp)
 	
 	n->length = vp->length;
 	
-	if ((n->type == PW_TYPE_TLV) &&
+	if ((n->da->type == PW_TYPE_TLV) &&
 	    (n->vp_tlv != NULL)) {
 		n->vp_tlv = malloc(n->length);
 		memcpy(n->vp_tlv, vp->vp_tlv, n->length);
@@ -449,7 +391,7 @@ VALUE_PAIR *paircopyvpdata(const DICT_ATTR *da, const VALUE_PAIR *vp)
 /** Copy matching pairs
  *
  * Copy pairs of a matching attribute number, vendor number and tag from the
- * the input list to a new list, and return the head of this list.
+ * the input list to a new list, and returns the head of this list.
  * 
  * @param[in] vp which is head of the input list.
  * @param[in] attr to match, if 0 input list will not be filtered by attr.
@@ -467,11 +409,11 @@ VALUE_PAIR *paircopy2(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor,
 
 	while (vp) {
 		if ((attr > 0) &&
-		    ((vp->attribute != attr) || (vp->vendor != vendor)))
+		    ((vp->da->attr != attr) || (vp->da->vendor != vendor)))
 			goto skip;
 			
-		if ((tag != TAG_ANY) && vp->flags.has_tag &&
-		    (vp->flags.tag != tag)) {
+		if ((tag != TAG_ANY) && vp->da->flags.has_tag &&
+		    (vp->tag != tag)) {
 			goto skip;
 		}
 
@@ -528,8 +470,8 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 	 */
 	tailto = to;
 	for(i = *to; i; i = i->next) {
-		if (i->attribute == PW_USER_PASSWORD ||
-		    i->attribute == PW_CRYPT_PASSWORD)
+		if (i->da->attr == PW_USER_PASSWORD ||
+		    i->da->attr == PW_CRYPT_PASSWORD)
 			has_password = 1;
 		tailto = &i->next;
 	}
@@ -546,8 +488,8 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 		 *	"from" to the "to" list.
 		 */
 		if (has_password &&
-		    (i->attribute == PW_USER_PASSWORD ||
-		     i->attribute == PW_CRYPT_PASSWORD)) {
+		    (i->da->attr == PW_USER_PASSWORD ||
+		     i->da->attr == PW_CRYPT_PASSWORD)) {
 			tailfrom = i;
 			continue;
 		}
@@ -581,11 +523,13 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 		 *	an exception for "Hint" which can appear multiple
 		 *	times, and we never move "Fall-Through".
 		 */
-		if (i->attribute == PW_FALL_THROUGH ||
-		    (i->attribute != PW_HINT && i->attribute != PW_FRAMED_ROUTE)) {
+		if (i->da->attr == PW_FALL_THROUGH ||
+		    (i->da->attr != PW_HINT && i->da->attr != PW_FRAMED_ROUTE)) {
 
 
-			found = pairfind(*to, i->attribute, i->vendor, TAG_ANY);
+			found = pairfind(*to, i->da->attr, i->da->vendor,
+					 TAG_ANY);
+					 
 			switch (i->op) {
 
 			/*
@@ -597,7 +541,10 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 					if (!i->vp_strvalue[0] ||
 					    (strcmp((char *)found->vp_strvalue,
 						    (char *)i->vp_strvalue) == 0)){
-						pairdelete(to, found->attribute, found->vendor, TAG_ANY);
+						pairdelete(to,
+							   found->da->attr,
+							   found->da->vendor,
+							   TAG_ANY);
 
 						/*
 						 *	'tailto' may have been
@@ -648,7 +595,9 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 					memcpy(found, i, sizeof(*found));
 					found->next = mynext;
 
-					pairdelete(&found->next, found->attribute, found->vendor, TAG_ANY);
+					pairdelete(&found->next,
+						   found->da->attr,
+						   found->da->vendor, TAG_ANY);
 
 					/*
 					 *	'tailto' may have been
@@ -725,8 +674,8 @@ void pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, unsigned int attr,
 	for(i = *from; i; i = next) {
 		next = i->next;
 
-		if ((tag != TAG_ANY) && i->flags.has_tag &&
-		    (i->flags.tag != tag)) {
+		if ((tag != TAG_ANY) && i->da->flags.has_tag &&
+		    (i->tag != tag)) {
 			continue;
 		}
 		
@@ -738,12 +687,12 @@ void pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, unsigned int attr,
 			/*
 			 *	It's a VSA: move it over.
 			 */
-			if (i->vendor != 0) goto move;
+			if (i->da->vendor != 0) goto move;
 
 			/*
 			 *	It's Vendor-Specific: move it over.
 			 */
-			if (i->attribute == attr) goto move;
+			if (i->da->attr == attr) goto move;
 
 			/*
 			 *	It's not a VSA: ignore it.
@@ -755,7 +704,7 @@ void pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, unsigned int attr,
 		/*
 		 *	If it isn't an exact match, ignore it.
 		 */
-		if (!((i->vendor == vendor) && (i->attribute == attr))) {
+		if (!((i->da->vendor == vendor) && (i->da->attr == attr))) {
 			iprev = i;
 			continue;
 		}
@@ -970,7 +919,18 @@ static int check_for_whitespace(const char *value)
 	return 1;
 }
 
-
+/** Convert a string value into a valuepair
+ *
+ * Uses the type of valuepair to determine the parsing scheme for the string.
+ * Will attempt to convert the string into the data type for a given vp.
+ *
+ * e.g. '012345' would become integer 12345.
+ *
+ * @param vp to use as a template.
+ * @param value string to parse.
+ *
+ * @todo change valuepair to da.
+ */
 VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 {
 	char		*p, *s=0;
@@ -986,12 +946,12 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 	 *	Even for integers, dates and ip addresses we
 	 *	keep the original string in vp->vp_strvalue.
 	 */
-	if (vp->type != PW_TYPE_TLV) {
+	if (vp->da->type != PW_TYPE_TLV) {
 		strlcpy(vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
 		vp->length = strlen(vp->vp_strvalue);
 	}
 
-	switch(vp->type) {
+	switch(vp->da->type) {
 	case PW_TYPE_STRING:
 		/*
 		 *	Do escaping here
@@ -1130,18 +1090,18 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 		if (!*p) break;
 		if (check_for_whitespace(p)) break;
 
-	check_for_value:
-		/*
-		 *	Look for the named value for the given
-		 *	attribute.
-		 */
-		if ((dval = dict_valbyname(vp->attribute, vp->vendor, value)) == NULL) {
-			fr_strerror_printf("Unknown value %s for attribute %s",
-				   value, vp->name);
-			return NULL;
-		}
-		vp->vp_integer = dval->value;
-		break;
+check_for_value:
+	/*
+	 *	Look for the named value for the given
+	 *	attribute.
+	 */
+	if ((dval = dict_valbyname(vp->da->attr, vp->da->vendor, value)) == NULL) {
+		fr_strerror_printf("Unknown value %s for attribute %s",
+			   value, vp->da->name);
+		return NULL;
+	}
+	vp->vp_integer = dval->value;
+	break;
 
 	case PW_TYPE_INTEGER64:
 		/*
@@ -1150,7 +1110,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 		p = vp->vp_strvalue;
 		if (sscanf(p, "%llu", &y) != 1) {
 			fr_strerror_printf("Invalid value %s for attribute %s",
-					   value, vp->name);
+					   value, vp->da->name);
 			return NULL;
 		}
 		vp->vp_integer64 = y;
@@ -1183,7 +1143,6 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 	case PW_TYPE_ABINARY:
 #ifdef WITH_ASCEND_BINARY
 		if (strncasecmp(value, "0x", 2) == 0) {
-			vp->type = PW_TYPE_OCTETS;
 			goto do_octets;
 		}
 
@@ -1224,7 +1183,6 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 
 			vp->length = size >> 1;
 			if (size > 2*sizeof(vp->vp_octets)) {
-				vp->type |= PW_FLAG_LONG;
 				us = vp->vp_tlv = malloc(vp->length);
 				if (!us) {
 					fr_strerror_printf("Out of memory.");
@@ -1232,8 +1190,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 				}
 			}
 
-			if (fr_hex2bin(cp, us,
-				       vp->length) != vp->length) {
+			if (fr_hex2bin(cp, us, vp->length) != vp->length) {
 				fr_strerror_printf("Invalid hex data");
 				return NULL;
 			}
@@ -1373,25 +1330,50 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 		}
 		vp->length = 6;
 		break;
-
+		
+	/* 
+	 *	Crazy polymorphic (IPv4/IPv6) attribute type for WiMAX.
+	 *
+	 *	We try and make is saner by replacing the original
+	 *	da, with either an IPv4 or IPv6 da type.
+	 *
+	 *	These are not dynamic da, and will have the same vendor
+	 *	and attribute as the original.
+	 */
 	case PW_TYPE_COMBO_IP:
-		if (inet_pton(AF_INET6, value, vp->vp_strvalue) > 0) {
-			vp->type = PW_TYPE_IPV6ADDR;
-			vp->length = 16; /* length of IPv6 address */
-			vp->vp_strvalue[vp->length] = '\0';
+		{
+			const DICT_ATTR *da;
+		
+			if (inet_pton(AF_INET6, value, vp->vp_strvalue) > 0) {
+				da = dict_attrbytype(vp->da->attr, vp->da->vendor,
+						     PW_TYPE_IPV6ADDR);
+				if (!da) {
+					return NULL;
+				}
+			
+				vp->length = 16; /* length of IPv6 address */
+				vp->vp_strvalue[vp->length] = '\0';
+			} else {
+				fr_ipaddr_t ipaddr;
+			
+				da = dict_attrbytype(vp->da->attr, vp->da->vendor,
+						     PW_TYPE_IPADDR);
+				if (!da) {
+					return NULL;
+				}
 
-		} else {
-			fr_ipaddr_t ipaddr;
+				if (ip_hton(value, AF_INET, &ipaddr) < 0) {
+					fr_strerror_printf("Failed to find IPv4 address for %s", value);
+					return NULL;
+				}
 
-			if (ip_hton(value, AF_INET, &ipaddr) < 0) {
-				fr_strerror_printf("Failed to find IPv4 address for %s", value);
-				return NULL;
+				vp->vp_ipaddr = ipaddr.ipaddr.ip4addr.s_addr;
+				vp->length = 4;
 			}
-
-			vp->type = PW_TYPE_IPADDR;
-			vp->vp_ipaddr = ipaddr.ipaddr.ip4addr.s_addr;
-			vp->length = 4;
+		
+			vp->da = da;
 		}
+		
 		break;
 
 	case PW_TYPE_SIGNED: /* Damned code for 1 WiMAX attribute */
@@ -1426,237 +1408,61 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 		 *  Anything else.
 		 */
 	default:
-		fr_strerror_printf("unknown attribute type %d", vp->type);
+		fr_strerror_printf("unknown attribute type %d", vp->da->type);
 		return NULL;
 	}
 
 	return vp;
 }
 
-/*
- *	Create a VALUE_PAIR from an ASCII attribute and value,
- *	where the attribute name is in the form:
+/** Create a valuepair from an ASCII attribute and value
  *
- *	Attr-%d
- *	Attr-%d.%d.%d...
- *	Vendor-%d-Attr-%d
- *	VendorName-Attr-%d
+ * Where the attribute name is in the form:
+ *  - Attr-%d
+ *  - Attr-%d.%d.%d...
+ *  - Vendor-%d-Attr-%d
+ *  - VendorName-Attr-%d
  *
+ * @param attribute name to parse.
+ * @param value to parse (must be a hex string).
+ * @param op to assign to new valuepair.
+ * @return new valuepair or NULL on error.
  */
 static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 				FR_TOKEN op)
 {
-	unsigned int   	attr, vendor;
-	unsigned int    dv_type = 1;
-	size_t		size;
-	const char	*p = attribute;
-	void		*data;
-	char		*q;
 	VALUE_PAIR	*vp;
-	DICT_VENDOR	*dv;
 	const DICT_ATTR *da;
+	
+	uint8_t		*data;
+	size_t		size;
 
 	/*
 	 *	Unknown attributes MUST be of type 'octets'
 	 */
 	if (value && (strncasecmp(value, "0x", 2) != 0)) {
-		fr_strerror_printf("Unknown attribute \"%s\" requires a hex string, not \"%s\"", attribute, value);
+		fr_strerror_printf("Unknown attribute \"%s\" requires a hex "
+				   "string, not \"%s\"", attribute, value);
 		return NULL;
 	}
 
-	vendor = 0;
-
-	/*
-	 *	Pull off vendor prefix first.
-	 */
-	if (strncasecmp(p, "Attr-", 5) != 0) {
-		if (strncasecmp(p, "Vendor-", 7) == 0) {
-			vendor = (int) strtol(p + 7, &q, 10);
-			if ((vendor == 0) || (vendor > FR_MAX_VENDOR)) {
-				fr_strerror_printf("Invalid vendor value in attribute name \"%s\"", attribute);
-				return NULL;
-			}
-
-			p = q;
-
-		} else {	/* must be vendor name */
-			char buffer[256];
-
-			q = strchr(p, '-');
-
-			if (!q) {
-				fr_strerror_printf("Invalid vendor name in attribute name \"%s\"", attribute);
-				return NULL;
-			}
-
-			if ((size_t) (q - p) >= sizeof(buffer)) {
-				fr_strerror_printf("Vendor name too long in attribute name \"%s\"", attribute);
-				return NULL;
-			}
-
-			memcpy(buffer, p, (q - p));
-			buffer[q - p] = '\0';
-
-			vendor = dict_vendorbyname(buffer);
-			if (!vendor) {
-				fr_strerror_printf("Unknown vendor name in attribute name \"%s\"", attribute);
-				return NULL;
-			}
-
-			p = q;
-		}
-
-		if (*p != '-') {
-			fr_strerror_printf("Invalid text following vendor definition in attribute name \"%s\"", attribute);
-			return NULL;
-		}
-		p++;
-	}
-
-	/*
-	 *	Attr-%d
-	 */
-	if (strncasecmp(p, "Attr-", 5) != 0) {
-		fr_strerror_printf("Invalid format in attribute name \"%s\"", attribute);
+	da = dict_attrunknownbyname(attribute);
+	if (!da) {
 		return NULL;
 	}
 
-	attr = strtol(p + 5, &q, 10);
-
-	/*
-	 *	Invalid attribute.
-	 */
-	if (attr == 0) {
-		fr_strerror_printf("Invalid value in attribute name \"%s\"", attribute);
-		return NULL;
-	}
-
-	p = q;
-
-	/*
-	 *	Vendor-%d-Attr-%d
-	 *	VendorName-Attr-%d
-	 *	Attr-%d
-	 *	Attr-%d.
-	 *
-	 *	Anything else is invalid.
-	 */
-	if (((vendor != 0) && (*p != '\0')) ||
-	    ((vendor == 0) && *p && (*p != '.'))) {
-	invalid:
-		fr_strerror_printf("Invalid OID");
-		return NULL;
-	}
-
-	/*
-	 *	Look for OIDs.  Require the "Attr-26.Vendor-Id.type"
-	 *	format, and disallow "Vendor-%d-Attr-%d" and
-	 *	"VendorName-Attr-%d"
-	 *
-	 *	This section parses the Vendor-Id portion of
-	 *	Attr-%d.%d.  where the first number is 26, *or* an
-	 *	extended attribute of the "evs" data type.
-	 */
-	if (*p == '.') {
-		da = dict_attrbyvalue(attr, 0);
-		if (!da) {
-			fr_strerror_printf("Cannot parse attributes without dictionaries");
-			return NULL;
-		}		
-		
-		if ((attr != PW_VENDOR_SPECIFIC) &&
-		    !(da->flags.extended || da->flags.long_extended)) {
-			fr_strerror_printf("Standard attributes cannot use OIDs");
-			return NULL;
-		}
-
-		if ((attr == PW_VENDOR_SPECIFIC) || da->flags.evs) {
-			vendor = strtol(p + 1, &q, 10);
-			if ((vendor == 0) || (vendor > FR_MAX_VENDOR)) {
-				fr_strerror_printf("Invalid vendor");
-				return NULL;
-			}
-
-			if (*q != '.') goto invalid;
-
-			p = q;
-
-			if (da->flags.evs) {
-				vendor |= attr * FR_MAX_VENDOR;
-			}
-			attr = 0;
-		} /* else the second number is a TLV number */
-	}
-
-	/*
-	 *	Get the expected maximum size of the attribute.
-	 */
-	if (vendor) {
-		dv = dict_vendorbyvalue(vendor & (FR_MAX_VENDOR - 1));
-		if (dv) {
-			dv_type = dv->type;
-			if (dv_type > 3) dv_type = 3; /* hack */
-		}
-	}
-
-	/*
-	 *	Parse the next number.  It could be a Vendor-Type
-	 *	of 1..2^24, or it could be a TLV.
-	 */
-	if (*p == '.') {
-		attr = strtol(p + 1, &q, 10);
-		if (attr == 0) {
-			fr_strerror_printf("Invalid attribute number");
-			return NULL;
-		}
-
-		if (*q) {
-			if (*q != '.') goto invalid;
-			if (dv_type != 1) goto invalid;
-		}
-
-		p = q;
-	}
-
-	/*
-	 *	Enforce a maximum value on the attribute number.
-	 */
-	if (attr >= (unsigned) (1 << (dv_type << 3))) goto invalid;
-
-	if (*p == '.') {
-		if (dict_str2oid(p + 1, &attr, &vendor, 1) < 0) {
-			return NULL;
-		}
-	}
-
-	/*
-	 *	Maybe we're reading an old detail/config file, where
-	 *	it didn't know about a particular attribute and dumped
-	 *	it as hex.  Now the dictionaries have been updated,
-	 *	and we know about it.  So... convert it to the
-	 *	appropriate type.
-	 *
-	 *	FIXME: call data2vp_any.
-	 */
-	da = dict_attrbyvalue(attr, vendor);
-	if (da) {
-		/*
-		 *	FIXME: convert hex to the data type.
-		 */
-		return NULL;
-	}
-	
 	/*
 	 *	We've now parsed the attribute properly, Let's create
 	 *	it.  This next stop also looks the attribute up in the
 	 *	dictionary, and creates the appropriate type for it.
 	 */
-	if ((vp = paircreate(attr, vendor, PW_TYPE_OCTETS)) == NULL) {
-		fr_strerror_printf("out of memory");
+	vp = pairalloc(da);
+	if (!vp) {
 		return NULL;
 	}
 
 	vp->op = (op == 0) ? T_OP_EQ : op;
+	
 	if (!value) return vp;
 
 	size = strlen(value + 2);
@@ -1671,7 +1477,6 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 			return NULL;
 		}
 		data = vp->vp_tlv;
-		vp->type |= PW_FLAG_LONG;
 	}
 
 	if (fr_hex2bin(value + 2, data, size) != vp->length) {
@@ -1692,7 +1497,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, FR_TOKEN op)
 	const DICT_ATTR	*da;
 	VALUE_PAIR	*vp;
 	char            *tc, *ts;
-	signed char     tag;
+	int8_t		tag;
 	int             found_tag;
 	char		buffer[256];
 	const char	*attrname = attribute;
@@ -1755,9 +1560,9 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, FR_TOKEN op)
 	        /* If we already found a tag, this is invalid */
 	        if(found_tag) {
 			fr_strerror_printf("Duplicate tag %s for attribute %s",
-				   value, vp->name);
+				   value, vp->da->name);
 			DEBUG("Duplicate tag %s for attribute %s\n",
-				   value, vp->name);
+				   value, vp->da->name);
 		        pairbasicfree(vp);
 			return NULL;
 		}
@@ -1777,7 +1582,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, FR_TOKEN op)
 	}
 
 	if (found_tag) {
-	  vp->flags.tag = tag;
+		vp->tag = tag;
 	}
 
 	switch (vp->op) {
@@ -1834,7 +1639,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, FR_TOKEN op)
 	}
 
 	/*
-	 *	FIXME: if (strcasecmp(attribute, vp->name) != 0)
+	 *	FIXME: if (strcasecmp(attribute, vp->da->name) != 0)
 	 *	then the user MAY have typed in the attribute name
 	 *	as Vendor-%d-Attr-%d, and the value MAY be octets.
 	 *
@@ -1849,6 +1654,47 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, FR_TOKEN op)
 	return vp;
 }
 
+/** Mark a valuepair for xlat expansion
+ *
+ * Copies xlat source (unprocessed) string to valuepair value,
+ * and sets value type.
+ *
+ * @param vp to mark for expansion.
+ * @param value to expand.
+ * @return 0 if marking succeeded or -1 if vp already had a value, or OOM.
+ */
+int pairmark_xlat(VALUE_PAIR *vp, const char *value)
+{
+	char *xlat;
+	
+	/*
+	 *	valuepair should not already have a value.
+	 */
+	if (vp->vt != VT_NONE) {
+		return -1;
+	}
+	
+	xlat = strdup(value);
+	if (!xlat) {
+		return -1;
+	}
+	
+	vp->vt = VT_XLAT;
+	vp->value.xlat = xlat;
+
+	return 0;	 
+}
+
+/** Create a valuepair and mark it for xlat expansion
+ *
+ * The valuepair xlat string will be expanded, parsed and then freed when
+ * the valuepair is added into a valuepair tree.
+ *
+ * @param attribute to use to create the valuepair.
+ * @param value to expand.
+ * @param op to assign to new valuepair.
+ * @return valuepair or NULL on error.
+ */
 VALUE_PAIR *pairmake_xlat(const char *attribute, const char *value,
 			  FR_TOKEN op)
 {
@@ -1860,10 +1706,16 @@ VALUE_PAIR *pairmake_xlat(const char *attribute, const char *value,
 	}
 
 	vp = pairmake(attribute, NULL, op);
-	if (!vp) return vp;
+	if (!vp) {
+		return vp;
+	}
+	
+	if (pairmark_xlat(vp, value) < 0) {
+		pairbasicfree(vp);
+		
+		return NULL; 
+	}
 
-	strlcpy(vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
-	vp->flags.do_xlat = 1;
 	vp->length = 0;
 
 	return vp;
@@ -2025,8 +1877,8 @@ VALUE_PAIR *pairread(const char **ptr, FR_TOKEN *eol)
 		/*
 		 *	String and octet types get copied verbatim.
 		 */
-		if ((vp->type == PW_TYPE_STRING) ||
-		    (vp->type == PW_TYPE_OCTETS)) {
+		if ((vp->da->type == PW_TYPE_STRING) ||
+		    (vp->da->type == PW_TYPE_OCTETS)) {
 			strlcpy(vp->vp_strvalue, value,
 				sizeof(vp->vp_strvalue));
 			vp->length = strlen(vp->vp_strvalue);
@@ -2206,7 +2058,7 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 			if (compare != 0) {
 				regerror(compare, &reg, buffer, sizeof(buffer));
 				fr_strerror_printf("Illegal regular expression in attribute: %s: %s",
-					   one->name, buffer);
+					   one->da->name, buffer);
 				return -1;
 			}
 
@@ -2231,13 +2083,15 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 	/*
 	 *	Can't compare two attributes of differing types
 	 */
-	if (one->type != two->type) return one->type - two->type;
-
+	if (one->da->type != two->da->type) {
+		return one->da->type - two->da->type;
+	}
+	
 	/*
 	 *	After doing the previous check for special comparisons,
 	 *	do the per-type comparison here.
 	 */
-	switch (one->type) {
+	switch (one->da->type) {
 	case PW_TYPE_ABINARY:
 	case PW_TYPE_OCTETS:
 	{

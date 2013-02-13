@@ -295,7 +295,7 @@ static int radclient_init(const char *filename)
 		 *  Fix up Digest-Attributes issues
 		 */
 		for (vp = radclient->request->vps; vp != NULL; vp = vp->next) {
-			switch (vp->attribute) {
+			switch (vp->da->attribute) {
 			default:
 				break;
 
@@ -348,10 +348,10 @@ static int radclient_init(const char *filename)
 				/* overlapping! */
 				memmove(&vp->vp_octets[2], &vp->vp_octets[0],
 					vp->length);
-				vp->vp_octets[0] = vp->attribute - PW_DIGEST_REALM + 1;
+				vp->vp_octets[0] = vp->da->attribute - PW_DIGEST_REALM + 1;
 				vp->length += 2;
 				vp->vp_octets[1] = vp->length;
-				vp->attribute = PW_DIGEST_ATTRIBUTES;
+				vp->da->attribute = PW_DIGEST_ATTRIBUTES;
 				break;
 			}
 		} /* loop over the VP's we read in */

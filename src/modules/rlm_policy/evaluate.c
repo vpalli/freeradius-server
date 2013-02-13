@@ -603,7 +603,7 @@ static int evaluate_condition(policy_state_t *state, const policy_item_t *item)
 			 *	it on every packet.
 			 */
 			vp_prints_value(buffer, sizeof(buffer), vp, 0);
-			myvp = pairmake(vp->name, this->rhs, T_OP_EQ);
+			myvp = pairmake(vp->da->name, this->rhs, T_OP_EQ);
 			if (!myvp) return FALSE; /* memory failure */
 			data = buffer;
 

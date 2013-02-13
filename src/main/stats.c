@@ -592,7 +592,7 @@ void request_stats_reply(REQUEST *request)
 			 *	When retrieving client by number, also
 			 *	echo back it's IP address.
 			 */
-			if ((vp->type == PW_TYPE_INTEGER) &&
+			if ((vp->da->type == PW_TYPE_INTEGER) &&
 			    (client->ipaddr.af == AF_INET)) {
 				vp = radius_paircreate(request,
 						       &request->reply->vps,

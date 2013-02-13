@@ -121,10 +121,10 @@ static void cisco_vsa_hack(VALUE_PAIR *vp)
 	char		newattr[MAX_STRING_LEN];
 
 	for ( ; vp != NULL; vp = vp->next) {
-		vendorcode = vp->vendor;
+		vendorcode = vp->da->vendor;
 		if (!((vendorcode == 9) || (vendorcode == 6618))) continue; /* not a Cisco or Quintum VSA, continue */
 
-		if (vp->type != PW_TYPE_STRING) continue;
+		if (vp->da->type != PW_TYPE_STRING) continue;
 
 		/*
 		 *  No weird packing.  Ignore it.
@@ -143,7 +143,7 @@ static void cisco_vsa_hack(VALUE_PAIR *vp)
 		 *	of the string, and if it exists, adds it as a new
 		 *	attribute.
 		 */
-		if (vp->attribute == 1) {
+		if (vp->da->attribute == 1) {
 			const char *p;
 			const DICT_ATTR	*dattr;
 
@@ -186,14 +186,14 @@ static void alvarion_vsa_hack(VALUE_PAIR *vp)
 	for ( ; vp != NULL; vp = vp->next) {
 		const DICT_ATTR *da;
 
-		if (vp->vendor != 12394) continue;
-		if (vp->type != PW_TYPE_STRING) continue;
+		if (vp->da->vendor != 12394) continue;
+		if (vp->da->type != PW_TYPE_STRING) continue;
 
 		da = dict_attrbyvalue(number, 12394);
 		if (!da) continue;
 
-		vp->attribute = da->attr;
-		vp->name = da->name;
+		vp->da->attribute = da->attr;
+		vp->da->name = da->name;
 
 		number++;
 	}

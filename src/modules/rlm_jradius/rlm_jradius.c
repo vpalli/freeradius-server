@@ -636,16 +636,16 @@ static int pack_vps(byte_array * ba, VALUE_PAIR * vps)
 
   for (vp = vps; vp != NULL; vp = vp->next) {
 
-    radlog(L_DBG, LOG_PREFIX "packing attribute %s (type: %d; len: %u)", 	   vp->name, vp->attribute, (unsigned int) vp->length);
+    radlog(L_DBG, LOG_PREFIX "packing attribute %s (type: %d; len: %u)", 	   vp->da->name, vp->da->attribute, (unsigned int) vp->length);
 
-    i = vp->attribute;		/* element is int, not uint32_t */
+    i = vp->da->attribute;		/* element is int, not uint32_t */
     if (pack_uint32(ba, i) == -1) return -1;
     i = vp->length;
     if (pack_uint32(ba, i) == -1) return -1;
     i = vp->op;
     if (pack_uint32(ba, i) == -1) return -1;
 
-    switch (vp->type) {
+    switch (vp->da->type) {
       case PW_TYPE_BYTE:
 	if (pack_uint8(ba, vp->vp_integer) == -1) return -1;
 	break;
@@ -789,7 +789,7 @@ static int read_vps(JRADIUS *inst, JRSOCK *jrsock, VALUE_PAIR **pl, int plen)
     vp = paircreate(atype, 0, -1);
     vp->op = aop;
 
-    if (vp->type == -1) {
+    if (vp->da->type == -1) {
       /*
        *     FreeRADIUS should know about the same attributes that JRadius knows
        */
@@ -803,13 +803,13 @@ static int read_vps(JRADIUS *inst, JRSOCK *jrsock, VALUE_PAIR **pl, int plen)
      *     paircreate() cannot recognize the real type of the address.
      *     ..ugly code...
      */
-    if (vp->type==PW_TYPE_COMBO_IP) {
+    if (vp->da->type==PW_TYPE_COMBO_IP) {
         switch (alen) {
             case 4:
-                vp->type = PW_TYPE_IPADDR;
+                vp->da->type = PW_TYPE_IPADDR;
                 break;
             case 16:
-                vp->type = PW_TYPE_IPV6ADDR;
+                vp->da->type = PW_TYPE_IPV6ADDR;
                 break;
         }
     }
@@ -817,7 +817,7 @@ static int read_vps(JRADIUS *inst, JRSOCK *jrsock, VALUE_PAIR **pl, int plen)
     /*
      *     Fill in the attribute value based on type
      */
-    switch (vp->type) {
+    switch (vp->da->type) {
       case PW_TYPE_BYTE:
 	vp->vp_integer = unpack_uint8(buff);
 	vp->length = 1;

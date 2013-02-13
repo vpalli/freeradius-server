@@ -1985,7 +1985,7 @@ static rlm_rcode_t ldap_authorize(void *instance, REQUEST * request)
 		vp->length = strlen(vp->vp_strvalue);
 		
 		RDEBUG2("Added eDirectory password in check items as %s = %s",
-			vp->name, vp->vp_strvalue);
+			vp->da->name, vp->vp_strvalue);
 			
 		if (inst->edir_autz) {
 			RDEBUG2("Binding as user for eDirectory authorization "

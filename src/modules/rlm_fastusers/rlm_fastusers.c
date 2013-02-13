@@ -261,14 +261,14 @@ static int fastuser_getfile(struct fastuser_instance *inst, const char *filename
 			 *	or it's a wire protocol,
 			 *	ensure it has '=='.
 			 */
-			if ((vp->vendor != 0) ||
-				(vp->attribute < 0x100)) {
+			if ((vp->da->vendor != 0) ||
+				(vp->da->attribute < 0x100)) {
 				if (!compat_mode) {
 					DEBUG("[%s]:%d WARNING! Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for user %s",
-					filename, entry->lineno, vp->name, vp->name, entry->name);
+					filename, entry->lineno, vp->da->name, vp->da->name, entry->name);
 				} else {
 					DEBUG("\tChanging '%s =' to '%s =='",
-						vp->name, vp->name);
+						vp->da->name, vp->da->name);
 				}
 				vp->op = T_OP_CMP_EQ;
 				continue;
@@ -289,16 +289,16 @@ static int fastuser_getfile(struct fastuser_instance *inst, const char *filename
 				 *	On the write attributes
 				 *	become ==
 				 */
-				if ((vp->attribute >= 0x100) &&
-					(vp->attribute <= 0xffff) &&
-					(vp->attribute != PW_HINT) &&
-					(vp->attribute != PW_HUNTGROUP_NAME)) {
+				if ((vp->da->attribute >= 0x100) &&
+					(vp->da->attribute <= 0xffff) &&
+					(vp->da->attribute != PW_HINT) &&
+					(vp->da->attribute != PW_HUNTGROUP_NAME)) {
 					DEBUG("\tChanging '%s =' to '%s +='",
-						vp->name, vp->name);
+						vp->da->name, vp->da->name);
 						vp->op = T_OP_ADD;
 				} else {
 					DEBUG("\tChanging '%s =' to '%s =='",
-						vp->name, vp->name);
+						vp->da->name, vp->da->name);
 					vp->op = T_OP_CMP_EQ;
 				}
 			}
@@ -321,14 +321,14 @@ static int fastuser_getfile(struct fastuser_instance *inst, const char *filename
 			 *	then bitch about it, giving a
 			 *	good warning message.
 			 */
-		         if ((vp->vendor == 0) &&
-				(vp->attribute > 0xff) &&
-				(vp->attribute > 1000)) {
+		         if ((vp->da->vendor == 0) &&
+				(vp->da->attribute > 0xff) &&
+				(vp->da->attribute > 1000)) {
 				log_debug("[%s]:%d WARNING! Check item \"%s\"\n"
 					"\tfound in reply item list for user \"%s\".\n"
 					"\tThis attribute MUST go on the first line"
 					" with the other check items",
-					filename, entry->lineno, vp->name,
+					filename, entry->lineno, vp->da->name,
 					entry->name);
 			}
 		}

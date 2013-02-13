@@ -123,8 +123,6 @@ typedef struct attr_flags {
 	unsigned int	evs : 1;		//!< Extended VSA.
 	unsigned int	wimax: 1;		//!< WiMAX format=1,1,c.
 
-	int8_t		tag;			//!< Tag for tunneled.
-						//!< Attributes.
 	uint8_t		encrypt;      		//!< Ecryption method.
 	uint8_t		length;
 } ATTR_FLAGS;
@@ -179,25 +177,46 @@ typedef union value_pair_data {
 	uint8_t			*tlv;
 } VALUE_PAIR_DATA;
 
-typedef struct value_pair {
-	const char	        *name;
-	struct value_pair	*next;
+typedef enum value_type {
+	VT_NONE = 0,				//!< valuepair has no value.
+	VT_SET,					//!< valuepair has children.
+	VT_LIST,				//!< valuepair has multiple 
+						//!< values.
+	VT_XLAT					//!< valuepair value must be 
+						//!< xlat expanded when it's 
+						//!< added to valuepair tree.
+} value_type_t;
 
-	/*
-	 *	Pack 4 32-bit fields together.  Saves ~8 bytes per struct
-	 *	on 64-bit machines.
-	 */
-	unsigned int		attribute;
-	unsigned int	       	vendor;
-	PW_TYPE			type;
+typedef struct value_pair {
+	const DICT_ATTR	        *da;		//!< Dictionary attribute
+						//!< defines the attribute
+						//!< number, vendor and type
+						//!< of the attribute.
+
+	struct value_pair	*next;
 
 	FR_TOKEN		op;		//!< Operator to use when 
 						//!< moving or inserting 
 						//!< valuepair into a list.
-						
-        ATTR_FLAGS              flags;
 
-	size_t			length; /* of data field */
+	int8_t			tag;		//!< Tag value used to group
+						//!< valuepairs.
+
+	union {
+	//	VALUE_SET	*set;		//!< Set of child attributes.
+	//	VLAUE_LIST	*list;		//!< List of values for 
+						//!< multivalued attribute.
+	//	VALUE_DATA 	*data;		//!< Value data for this 
+						//!< attribute.
+	
+		const char 	*xlat;		//!< Source string for xlat
+						//!< expansion.
+	} value;
+	
+	value_type_t		vt;		//!< Type of pointer in value
+						//!< union.
+						
+	size_t			length;		//!< of Data field.
 	VALUE_PAIR_DATA		data;
 } VALUE_PAIR;
 #define vp_strvalue   data.strvalue
@@ -414,8 +433,9 @@ int rad_vp2attr(const RADIUS_PACKET *packet,
 
 /* valuepair.c */
 VALUE_PAIR	*pairalloc(const DICT_ATTR *da);
-VALUE_PAIR	*paircreate_raw(int attr, int vendor, int type, VALUE_PAIR *);
-VALUE_PAIR	*paircreate(int attr, int vendor, int type);
+VALUE_PAIR 	*paircreate_unknown(unsigned int attr, unsigned int vendor);
+VALUE_PAIR	*paircreate(unsigned int attr, unsigned int vendor);
+int		pair2unknown(VALUE_PAIR *vp);
 void		pairfree(VALUE_PAIR **);
 void            pairbasicfree(VALUE_PAIR *pair);
 VALUE_PAIR	*pairfind(VALUE_PAIR *, unsigned int attr, unsigned int vendor, int8_t tag);
@@ -431,6 +451,7 @@ void		pairmove(VALUE_PAIR **to, VALUE_PAIR **from);
 void		pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, unsigned int attr, unsigned int vendor, int8_t tag);
 VALUE_PAIR	*pairparsevalue(VALUE_PAIR *vp, const char *value);
 VALUE_PAIR	*pairmake(const char *attribute, const char *value, FR_TOKEN op);
+int 		pairmark_xlat(VALUE_PAIR *vp, const char *value);
 VALUE_PAIR	*pairmake_xlat(const char *attribute, const char *value, FR_TOKEN op);
 VALUE_PAIR	*pairread(const char **ptr, FR_TOKEN *eol);
 FR_TOKEN	userparse(const char *buffer, VALUE_PAIR **first_pair);

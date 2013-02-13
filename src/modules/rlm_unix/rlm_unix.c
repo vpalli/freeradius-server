@@ -474,7 +474,7 @@ static rlm_rcode_t unix_accounting(void *instance, REQUEST *request)
 	 *	First, find the interesting attributes.
 	 */
 	for (vp = request->packet->vps; vp; vp = vp->next) {
-		switch (vp->attribute) {
+		switch (vp->da->attribute) {
 			case PW_USER_NAME:
 				if (vp->length >= sizeof(ut.ut_name)) {
 					memcpy(ut.ut_name, (char *)vp->vp_strvalue, sizeof(ut.ut_name));
