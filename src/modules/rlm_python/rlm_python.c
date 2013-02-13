@@ -334,7 +334,7 @@ static int python_populate_vptuple(PyObject *pPair, VALUE_PAIR *vp)
 	
 	/* Look at the vp_print_name? */
 	
-	if (vp->flags.has_tag)
+	if (vp->da->flags.has_tag)
 		pStr = PyString_FromFormat("%s:%d", vp->da->name, vp->tag);
 	else
 		pStr = PyString_FromString(vp->da->name);
