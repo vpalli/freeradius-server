@@ -258,7 +258,7 @@ static rlm_rcode_t pap_authorize(void *instance, REQUEST *request)
 	for (vp = request->config_items; vp != NULL; vp = next) {
 		next = vp->next;
 
-		switch (vp->da->attribute) {
+		switch (vp->da->attr) {
 		case PW_USER_PASSWORD: /* deprecated */
 			RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			RDEBUG("!!! Please update your configuration so that the \"known !!!");
@@ -426,7 +426,7 @@ static rlm_rcode_t pap_authorize(void *instance, REQUEST *request)
 	 *	Can't do PAP if there's no password.
 	 */
 	if (!request->password ||
-	    (request->password->attribute != PW_USER_PASSWORD)) {
+	    (request->password->da->attr != PW_USER_PASSWORD)) {
 		/*
 		 *	Don't print out debugging messages if we know
 		 *	they're useless.
@@ -464,7 +464,7 @@ static rlm_rcode_t pap_authenticate(void *instance, REQUEST *request)
 	instance = instance;
 
 	if (!request->password ||
-	    (request->password->attribute != PW_USER_PASSWORD)) {
+	    (request->password->da->attr != PW_USER_PASSWORD)) {
 		RDEBUG("ERROR: You set 'Auth-Type = PAP' for a request that does not contain a User-Password attribute!");
 		return RLM_MODULE_INVALID;
 	}
@@ -487,7 +487,7 @@ static rlm_rcode_t pap_authenticate(void *instance, REQUEST *request)
 	 *	function to call.
 	 */
 	for (vp = request->config_items; vp != NULL; vp = vp->next) {
-		switch (vp->da->attribute) {
+		if (!vp->da->vendor) switch (vp->da->attr) {
 		case PW_CLEARTEXT_PASSWORD:
 			auth_func = &pap_auth_clear;
 			break;
