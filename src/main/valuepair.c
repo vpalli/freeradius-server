@@ -349,8 +349,8 @@ int radius_callback_compare(REQUEST *req, VALUE_PAIR *request,
 	 *	FIXME: use new RB-Tree code.
 	 */
 	for (c = cmp; c; c = c->next) {
-		if ((c->attribute == check->attribute) &&
-		    (check->vendor == 0)) {
+		if (!check->da->vendor &&
+		    (c->attribute == check->da->attr) &&
 			return (c->compare)(c->instance, req, request, check,
 				check_pairs, reply_pairs);
 		}
@@ -494,7 +494,7 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 			continue;
 		}
 
-		switch (check_item->attribute) {
+		if (!check_item->da->vendor) switch (check_item->da->attr) {
 			/*
 			 *	Attributes we skip during comparison.
 			 *	These are "server" check items.
