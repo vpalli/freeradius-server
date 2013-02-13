@@ -229,8 +229,8 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 	 *	Tagged attributes are equal if and only if both the
 	 *	tag AND value match.
 	 */
-	if (check->flags.has_tag) {
-		ret = ((int) vp->tag) - ((int) check->flags.tag);
+	if (check->da->flags.has_tag) {
+		ret = ((int) vp->tag) - ((int) check->tag);
 		if (ret != 0) return ret;
 	}
 
