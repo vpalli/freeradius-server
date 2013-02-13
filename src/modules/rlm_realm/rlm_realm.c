@@ -181,7 +181,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		 *	doesn't exist.
 		 *
 		 */
-		if (request->username->attribute != PW_STRIPPED_USER_NAME) {
+		if (request->username->da->attr != PW_STRIPPED_USER_NAME) {
 			vp = radius_paircreate(request, &request->packet->vps,
 					       PW_STRIPPED_USER_NAME, 0,
 					       PW_TYPE_STRING);
