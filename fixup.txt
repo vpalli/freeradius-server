@@ -1,0 +1,56 @@
+rlm_always		OK
+rlm_attr_filter		DONE
+rlm_attr_rewrite	OK
+rlm_cache		DONE
+rlm_chap		OK
+rlm_checkval		OK
+rlm_counter		OK
+rlm_cram		OK
+rlm_dbm			OK
+rlm_detail
+rlm_dhcp		OK
+rlm_digest
+rlm_dynamic_clients
+rlm_eap
+rlm_eap2
+rlm_example		OK
+rlm_exec		OK
+rlm_expiration
+rlm_expr		DONE
+rlm_files
+rlm_ippool		OK
+rlm_jradius
+rlm_krb5		DONE
+rlm_ldap
+rlm_linelog		OK
+rlm_logintime
+rlm_mschap
+rlm_opendirectory
+rlm_otp
+rlm_pam			OK
+rlm_pap
+rlm_passwd		OK
+rlm_perl
+rlm_policy
+rlm_preprocess
+rlm_python
+rlm_radutmp		DONE
+rlm_realm		DONE
+rlm_redis
+rlm_rediswho
+rlm_replicate
+rlm_rest
+rlm_ruby
+rlm_securid		DONE
+rlm_sim_files		DONE
+rlm_smsotp		OK
+rlm_soh			DONE
+rlm_sometimes		OK
+rlm_sql
+rlm_sql_log
+rlm_sqlcounter
+rlm_sqlhpwippool
+rlm_sqlippool
+rlm_unix		DONE
+rlm_utf8		OK
+rlm_wimax		OK
