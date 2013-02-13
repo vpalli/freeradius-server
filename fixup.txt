@@ -17,7 +17,7 @@ rlm_example		OK
 rlm_exec		OK
 rlm_expiration		OK
 rlm_expr		DONE
-rlm_files
+rlm_files		DONE
 rlm_ippool		OK
 rlm_jradius
 rlm_krb5		DONE
