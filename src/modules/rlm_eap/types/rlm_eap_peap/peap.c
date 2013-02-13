@@ -275,7 +275,7 @@ static VALUE_PAIR *eap2vp(REQUEST *request, EAP_DS *eap_ds,
 
 	if (data_len > 65535) return NULL; /* paranoia */
 
-	vp = paircreate(PW_EAP_MESSAGE, 0, PW_TYPE_OCTETS);
+	vp = paircreate(PW_EAP_MESSAGE, 0);
 	if (!vp) {
 		RDEBUG2("Failure in creating VP");
 		return NULL;
@@ -301,7 +301,7 @@ static VALUE_PAIR *eap2vp(REQUEST *request, EAP_DS *eap_ds,
 		int vp_len;
 
 
-		vp = paircreate(PW_EAP_MESSAGE, 0, PW_TYPE_OCTETS);
+		vp = paircreate(PW_EAP_MESSAGE, 0);
 		if (!vp) {
 			RDEBUG2("Failure in creating VP");
 			pairfree(&head);
@@ -930,7 +930,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 
 		t->status = PEAP_STATUS_PHASE2;
 
-		vp = paircreate(PW_EAP_MESSAGE, 0, PW_TYPE_OCTETS);
+		vp = paircreate(PW_EAP_MESSAGE, 0);
 
 		vp->vp_octets[0] = PW_EAP_RESPONSE;
 		vp->vp_octets[1] = eap_ds->response->id;
@@ -1260,8 +1260,8 @@ static int setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t)
 			 *	The attribute is a server-side thingy,
 			 *	don't copy it.
 			 */
-			if ((vp->da->attribute > 255) &&
-			    (((vp->da->attribute >> 16) & 0xffff) == 0)) {
+			if ((vp->da->attr > 255) &&
+			    (((vp->da->attr >> 16) & 0xffff) == 0)) {
 				continue;
 			}
 
@@ -1274,14 +1274,14 @@ static int setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t)
 			 *	AND attributes which are copied there
 			 *	from below.
 			 */
-			if (pairfind(fake->packet->vps, vp->da->attribute, vp->da->vendor, TAG_ANY)) {
+			if (pairfind(fake->packet->vps, vp->da->attr, vp->da->vendor, TAG_ANY)) {
 				continue;
 			}
 
 			/*
 			 *	Some attributes are handled specially.
 			 */
-			switch (vp->da->attribute) {
+			switch (vp->da->attr) {
 				/*
 				 *	NEVER copy Message-Authenticator,
 				 *	EAP-Message, or State.  They're
@@ -1309,7 +1309,7 @@ static int setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t)
 			 *	Don't copy from the head, we've already
 			 *	checked it.
 			 */
-			copy = paircopy2(vp, vp->da->attribute, vp->da->vendor, TAG_ANY);
+			copy = paircopy2(vp, vp->da->attr, vp->da->vendor, TAG_ANY);
 			pairadd(&fake->packet->vps, copy);
 		}
 	}
