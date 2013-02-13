@@ -230,7 +230,7 @@ static int ruby_function(REQUEST *request, int func, VALUE module, const char *f
             VALUE tmp = rb_ary_new2(2);
 
             /* The name. logic from vp_prints, lib/print.c */
-            if (vp->flags.has_tag) {
+            if (vp->da->flags.has_tag) {
                 snprintf(buf, BUF_SIZE, "%s:%d", vp->da->name, vp->tag);
             } else {
                 strcpy(buf, vp->da->name);
