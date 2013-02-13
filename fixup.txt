@@ -26,7 +26,7 @@ rlm_linelog		OK
 rlm_logintime		OK
 rlm_mschap		DONE
 rlm_opendirectory	DONE
-rlm_otp
+rlm_otp			DONE
 rlm_pam			OK
 rlm_pap
 rlm_passwd		OK
