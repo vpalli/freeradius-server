@@ -10,7 +10,7 @@ rlm_dbm			OK
 rlm_detail		DONE
 rlm_dhcp		OK
 rlm_digest		DONE
-rlm_dynamic_clients
+rlm_dynamic_clients	OK
 rlm_eap			DONE
 rlm_eap2
 rlm_example		OK
