@@ -478,11 +478,11 @@ static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb,
 			goto end_chunk;
 		}
 
-		RDEBUG2("Encoding attribute \"%s\"", current[0]->name);
+		RDEBUG2("Encoding attribute \"%s\"", current[0]->da->name);
 
 		if (ctx->state == READ_STATE_ATTR_BEGIN) {
-			escaped = curl_escape(current[0]->name,
-					      strlen(current[0]->name));
+			escaped = curl_escape(current[0]->da->name,
+					      strlen(current[0]->da->name));
 			len = strlen(escaped);
 
 			if (s < (1 + len)) {
@@ -657,18 +657,18 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 		 *	New attribute, write name, type, and beginning of
 		 *	value array.
 		 */
-		RDEBUG2("Encoding attribute \"%s\"", current[0]->name);
+		RDEBUG2("Encoding attribute \"%s\"", current[0]->da->name);
 		if (ctx->state == READ_STATE_ATTR_BEGIN) {
-			type = fr_int2str(dict_attr_types, current[0]->type,
+			type = fr_int2str(dict_attr_types, current[0]->da->type,
 					  "¿Unknown?");
 
 			len  = strlen(type);
-			len += strlen(current[0]->name);
+			len += strlen(current[0]->da->name);
 
 			if (s < (23 + len)) goto no_space;
 
 			len = sprintf(p, "\"%s\":{\"type\":\"%s\",\"value\":[" ,
-				      current[0]->name, type);
+				      current[0]->da->name, type);
 			p += len;
 			s -= len;
 
@@ -703,9 +703,8 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 			/* 
 			 *	Multivalued attribute
 			 */
-			if (current[1] && 
-			    ((current[0]->attribute == current[1]->attribute) &&
-			     (current[0]->vendor == current[1]->vendor))) {
+			if (current[1] &&
+			    (current[0]->da == current[1]->da)) {
 				*p++ = ',';
 				current++;
 
@@ -894,14 +893,8 @@ static void rest_read_ctx_init(REQUEST *request,
 	/* TODO: Quicksort would be faster... */
 	do {
 		for(i = 1; i < count; i++) {
-			assert(current[i-1]->attribute &&
-			       current[i]->attribute);
-
 			swap = 0;
-			if ((current[i-1]->vendor > current[i]->vendor) ||
-			    ((current[i-1]->vendor == current[i]->vendor) &&
-			     (current[i-1]->attribute > current[i]->attribute)
-			    )) {
+			if (current[i-1]->da > current[i]->da) {
 				tmp	     = current[i];
 				current[i]   = current[i-1];
 				current[i-1] = tmp;
@@ -990,7 +983,6 @@ static int rest_decode_post(rlm_rest_t *instance,
 	VALUE_PAIR *vp;
 
 	const DICT_ATTR **current, *processed[REST_BODY_MAX_ATTRS + 1];
-	VALUE_PAIR *tmp;
 
 	pair_lists_t list_name;
 	request_refs_t request_name;
@@ -1079,7 +1071,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 		RDEBUG2("\tLength : %i", curl_len);
 		RDEBUG2("\tValue  : \"%s\"", value);
 
-		vp = paircreate(da->attr, da->vendor, da->type);
+		vp = pairalloc(da);
 		if (!vp) {
 			radlog(L_ERR, "rlm_rest (%s): Failed creating"
 			       " value-pair", instance->xlat_name);
@@ -1108,17 +1100,15 @@ static int rest_decode_post(rlm_rest_t *instance,
 			current[1] = NULL;
 		}
 
-		tmp = pairparsevalue(vp, value);
-		if (tmp == NULL) {
+		if (!pairparsevalue(vp, value)) {
 			RDEBUG("Incompatible value assignment, skipping");
 			pairbasicfree(vp);
 			goto skip;
 		}
-		vp = tmp;
 
 		rest_check_truncation(request, value, vp);
 
-		vp->flags.do_xlat = 1;
+		pairmark_xlat(vp, value);
 
 		RDEBUG("Performing xlat expansion of response value", value);
 		pairxlatmove(request, vps, &vp);
