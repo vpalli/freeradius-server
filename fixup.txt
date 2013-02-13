@@ -11,7 +11,7 @@ rlm_detail		DONE
 rlm_dhcp		OK
 rlm_digest
 rlm_dynamic_clients
-rlm_eap
+rlm_eap			DONE
 rlm_eap2
 rlm_example		OK
 rlm_exec		OK
@@ -21,7 +21,7 @@ rlm_files
 rlm_ippool		OK
 rlm_jradius
 rlm_krb5		DONE
-rlm_ldap
+rlm_ldap		DONE
 rlm_linelog		OK
 rlm_logintime
 rlm_mschap
@@ -46,11 +46,10 @@ rlm_sim_files		DONE
 rlm_smsotp		OK
 rlm_soh			DONE
 rlm_sometimes		OK
-rlm_sql
-rlm_sql_log
-rlm_sqlcounter
-rlm_sqlhpwippool
-rlm_sqlippool
+rlm_sql			OK
+rlm_sqlcounter		OK
+rlm_sqlhpwippool	OK
+rlm_sqlippool		OK
 rlm_unix		DONE
 rlm_utf8		OK
 rlm_wimax		OK
