@@ -636,9 +636,9 @@ static int pack_vps(byte_array * ba, VALUE_PAIR * vps)
 
   for (vp = vps; vp != NULL; vp = vp->next) {
 
-    radlog(L_DBG, LOG_PREFIX "packing attribute %s (type: %d; len: %u)", 	   vp->da->name, vp->da->attribute, (unsigned int) vp->length);
+    radlog(L_DBG, LOG_PREFIX "packing attribute %s (type: %d; len: %u)", 	   vp->da->name, vp->da->attr, (unsigned int) vp->length);
 
-    i = vp->da->attribute;		/* element is int, not uint32_t */
+    i = vp->da->attr;		/* element is int, not uint32_t */
     if (pack_uint32(ba, i) == -1) return -1;
     i = vp->length;
     if (pack_uint32(ba, i) == -1) return -1;
@@ -786,10 +786,10 @@ static int read_vps(JRADIUS *inst, JRSOCK *jrsock, VALUE_PAIR **pl, int plen)
     /*
      *     Create new attribute
      */
-    vp = paircreate(atype, 0, -1);
+    vp = paircreate(atype, 0);
     vp->op = aop;
 
-    if (vp->da->type == -1) {
+    if (vp->da->flags.is_unknown) {
       /*
        *     FreeRADIUS should know about the same attributes that JRadius knows
        */

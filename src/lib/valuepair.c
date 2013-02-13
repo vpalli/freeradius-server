@@ -75,31 +75,16 @@ VALUE_PAIR *pairalloc(const DICT_ATTR *da)
 	return vp;
 }
 
-/** Create a new valuepair and dictionary entry
- *
- * For use where there is no dictionary entry for the valuepair being
- * created.
- *
- * @param[in] attr number.
- * @param[in] vendor number.
- * @return the new valuepair or NULL on error.
- */
-VALUE_PAIR *paircreate_unknown(unsigned int attr, unsigned int vendor)
-{
-	const DICT_ATTR *da;
-	
-	da = dict_attrunknown(attr, vendor);
-	if (!da) {
-		return NULL;	
-	}
-	
-	return pairalloc(da);
-}
-
 /** Create a new valuepair
  * 
- * For use when the attribute/vendor are known to exist. Will lookup attr
- * and vendor in dictionary and return NULL if they're not found.
+ * If attr and vendor match a dictionary entry then a VP with that DICT_ATTR
+ * will be returned.
+ *
+ * If attr or vendor are uknown will call dict_attruknown to create a dynamic
+ * DICT_ATTR of PW_TYPE_OCTETS.
+ *
+ * Which type of DICT_ATTR the VALUE_PAIR was created with can be determined by
+ * checking @verbatim vp->da->flags.is_unknown @endverbatim.
  * 
  * @param[in] attr number.
  * @param[in] vendor number.
@@ -111,7 +96,10 @@ VALUE_PAIR *paircreate(unsigned int attr, unsigned int vendor)
 
 	da = dict_attrbyvalue(attr, vendor);
 	if (!da) {
-		return NULL;
+		da = dict_attrunknown(attr, vendor);
+		if (!da) {
+			return NULL;
+		}
 	}
 
 	return pairalloc(da);
