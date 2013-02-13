@@ -7,7 +7,7 @@ rlm_checkval		OK
 rlm_counter		OK
 rlm_cram		OK
 rlm_dbm			OK
-rlm_detail
+rlm_detail		DONE
 rlm_dhcp		OK
 rlm_digest
 rlm_dynamic_clients
