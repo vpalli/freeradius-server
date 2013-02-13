@@ -28,7 +28,6 @@ rlm_pam
 rlm_pap
 rlm_passwd
 rlm_perl
-rlm_policy
 rlm_preprocess
 rlm_python
 rlm_radutmp
