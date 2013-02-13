@@ -30,7 +30,7 @@ rlm_otp			DONE
 rlm_pam			OK
 rlm_pap			DONE
 rlm_passwd		OK
-rlm_perl
+rlm_perl		DONE
 rlm_policy		REMOVED
 rlm_preprocess
 rlm_python
