@@ -215,7 +215,7 @@ static rlm_rcode_t rediswho_accounting(void * instance, REQUEST * request)
 		return RLM_MODULE_NOOP;
 	}
 
-	dv = dict_valbyattr(vp->da->attribute, vp->da->vendor, vp->vp_integer);
+	dv = dict_valbyattr(vp->da->attr, vp->da->vendor, vp->vp_integer);
 	if (!dv) {
 		RDEBUG("Unknown Acct-Status-Type %u", vp->vp_integer);
 		return RLM_MODULE_NOOP;
