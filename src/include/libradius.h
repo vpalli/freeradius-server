@@ -112,7 +112,6 @@ typedef struct attr_flags {
 						//!< vendor is unknown.					
 	unsigned int	is_tlv : 1;		//!< Is a sub attribute.
 	unsigned int	has_tag : 1;		//!< Tagged attribute.
-	unsigned int	do_xlat : 1; 		//!< Strvalue is dynamic.
 	unsigned int	array : 1; 		//!< Pack multiples into 1 attr.
 	unsigned int	has_value : 1;		//!< Has a value.
 	unsigned int	has_value_alias : 1; 	//!< Has a value alias.
