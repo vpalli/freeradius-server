@@ -15,7 +15,7 @@ rlm_eap			DONE
 rlm_eap2
 rlm_example		OK
 rlm_exec		OK
-rlm_expiration
+rlm_expiration		OK
 rlm_expr		DONE
 rlm_files
 rlm_ippool		OK
