@@ -143,7 +143,7 @@ static void cisco_vsa_hack(VALUE_PAIR *vp)
 		 *	of the string, and if it exists, adds it as a new
 		 *	attribute.
 		 */
-		if (vp->da->attribute == 1) {
+		if (vp->da->attr == 1) {
 			const char *p;
 			const DICT_ATTR	*dattr;
 
@@ -192,8 +192,7 @@ static void alvarion_vsa_hack(VALUE_PAIR *vp)
 		da = dict_attrbyvalue(number, 12394);
 		if (!da) continue;
 
-		vp->da->attribute = da->attr;
-		vp->da->name = da->name;
+		vp->da = da;
 
 		number++;
 	}
@@ -331,8 +330,8 @@ static void rad_mangle(rlm_preprocess_t *data, REQUEST *request)
 
 	num_proxy_state = 0;
 	for (tmp = request->packet->vps; tmp != NULL; tmp = tmp->next) {
-		if (tmp->vendor != 0) continue;
-		if (tmp->attribute != PW_PROXY_STATE) continue;
+		if (tmp->da->vendor != 0) continue;
+		if (tmp->da->attr != PW_PROXY_STATE) continue;
 
 		num_proxy_state++;
 	}
