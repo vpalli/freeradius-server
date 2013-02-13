@@ -447,7 +447,7 @@ static int decode_tlv(VALUE_PAIR *tlv, const uint8_t *data, size_t data_len)
 
 	p = data;
 	while (p < (data + data_len)) {
-		vp = paircreate(tlv->da->attr | (p[0] << 8), DHCP_MAGIC_VENDOR, PW_TYPE_OCTETS);
+		vp = paircreate(tlv->da->attr | (p[0] << 8), DHCP_MAGIC_VENDOR);
 		if (!vp) {
 			pairfree(&head);
 			goto make_tlv;
@@ -527,7 +527,7 @@ static int fr_dhcp_attr2vp(VALUE_PAIR *vp, const uint8_t *p, size_t alen)
 	 *	vp's original DICT_ATTR with an unknown one.
 	 */
 	raw:
-		if (pair2uknown(vp) < 0) return -1;
+		if (pair2unknown(vp) < 0) return -1;
 		
 	case PW_TYPE_OCTETS:
 		if (alen > 253) return -1;
@@ -632,14 +632,7 @@ ssize_t fr_dhcp_decode_options(uint8_t *data, size_t len, VALUE_PAIR **head)
 			/*
 			 *	Hack for ease of use.
 			 */
-			if ((da->attr == 0x3d) &&
-			    !da->flags.array &&
-			    (alen == 7) && (*p == 1) && (num_entries == 1)) {
-				vp->da->type = PW_TYPE_ETHERNET;
-				memcpy(vp->vp_octets, p + 1, 6);
-				vp->length = alen;
-
-			} else if (fr_dhcp_attr2vp(vp, p, alen) < 0) {
+			if (fr_dhcp_attr2vp(vp, p, alen) < 0) {
 				pairfree(&vp);
 				pairfree(head);
 				return -1;
@@ -659,7 +652,7 @@ ssize_t fr_dhcp_decode_options(uint8_t *data, size_t len, VALUE_PAIR **head)
 
 int fr_dhcp_decode(RADIUS_PACKET *packet)
 {
-	ssize_t i;
+	size_t i;
 	uint8_t *p;
 	uint32_t giaddr;
 	VALUE_PAIR *head, *vp, **tail;
@@ -697,8 +690,8 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 
 		if ((i == 11) && 
 		    (packet->data[1] == 1) &&
-		    (packet->data[2] == 6)) {
-			vp->da->type = PW_TYPE_ETHERNET;
+		    (packet->data[2] != 6)) {
+		    	fr_strerror_printf("chaddr of incorrect length for ethernet");
 		}
 
 		switch (vp->da->type) {
@@ -935,9 +928,9 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(VALUE_PAIR *vps)
 	uint8_t *ptr;
 	VALUE_PAIR *vp, *tlv;
 
-	attribute = vps->attribute & 0xffff00ff;
+	attribute = vps->da->attr & 0xffff00ff;
 
-	tlv = paircreate(attribute, DHCP_MAGIC_VENDOR, PW_TYPE_TLV);
+	tlv = paircreate(attribute, DHCP_MAGIC_VENDOR);
 	if (!tlv) return NULL;
 
 	tlv->length = 0;
@@ -946,9 +939,9 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(VALUE_PAIR *vps)
 		 *	Group the attributes ONLY until we see a
 		 *	non-TLV attribute.
 		 */
-		if (!vp->flags.is_tlv ||
-		    vp->flags.extended ||
-		    ((vp->da->attribute & 0xffff00ff) != attribute)) {
+		if (!vp->da->flags.is_tlv ||
+		    vp->da->flags.extended ||
+		    ((vp->da->attr & 0xffff00ff) != attribute)) {
 			break;
 		}
 
@@ -968,9 +961,9 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(VALUE_PAIR *vps)
 
 	ptr = tlv->vp_tlv;
 	for (vp = vps; vp != NULL; vp = vp->next) {
-		if (!vp->flags.is_tlv ||
-		    vp->flags.extended ||
-		    ((vp->da->attribute & 0xffff00ff) != attribute)) {
+		if (!vp->da->flags.is_tlv ||
+		    vp->da->flags.extended ||
+		    ((vp->da->attr & 0xffff00ff) != attribute)) {
 			break;
 		}
 
@@ -981,11 +974,10 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(VALUE_PAIR *vps)
 		/*
 		 *	Pack the attribute.
 		 */
-		ptr[0] = (vp->da->attribute & 0xff00) >> 8;
+		ptr[0] = (vp->da->attr & 0xff00) >> 8;
 		ptr[1] = length;
 
 		ptr += length + 2;
-		vp->flags.extended = 1;
 	}
 
 	return tlv;
@@ -994,7 +986,7 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(VALUE_PAIR *vps)
 
 int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 {
-	int i, num_vps;
+	unsigned int i, num_vps;
 	uint8_t *p;
 	VALUE_PAIR *vp;
 	uint32_t lvalue, mms;
@@ -1430,23 +1422,25 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		uint8_t *plength, *pattr;
 
 		if (vp->da->vendor != DHCP_MAGIC_VENDOR) goto next;
-		if (vp->da->attribute == 53) goto next; /* already done */
-		if ((vp->da->attribute > 255) &&
-		    (DHCP_BASE_ATTR(vp->da->attribute) != PW_DHCP_OPTION_82)) goto next;
+		if (vp->da->attr == 53) goto next; /* already done */
+		if ((vp->da->attr > 255) &&
+		    (DHCP_BASE_ATTR(vp->da->attr) != PW_DHCP_OPTION_82)) goto next;
 
 		debug_pair(vp);
-		if (vp->flags.extended) goto next;
+		if (vp->da->flags.extended) goto next;
 
 		length = vp->length;
 
 		for (same = vp->next; same != NULL; same = same->next) {
-			if (same->attribute != vp->da->attribute) break;
+			if (same->da->attr != vp->da->attr) break;
 			num_entries++;
 		}
 
 		/*
 		 *	For client-identifier
+		 * @fixme What's this meant to be doing?!
 		 */
+#if 0
 		if ((vp->da->type == PW_TYPE_ETHERNET) &&
 		    (vp->length == 6) &&
 		    (num_entries == 1)) {
@@ -1454,16 +1448,16 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 			memmove(vp->vp_octets + 1, vp->vp_octets, 6);
 			vp->vp_octets[0] = 1;
 		}
-
+#endif
 		pattr = p;
-		*(p++) = vp->da->attribute & 0xff;
+		*(p++) = vp->da->attr & 0xff;
 		plength = p;
 		*(p++) = 0;	/* header isn't included in attr length */
 
 		for (i = 0; i < num_entries; i++) {
 			debug_pair(vp);
 
-			if (vp->flags.is_tlv) {
+			if (vp->da->flags.is_tlv) {
 				VALUE_PAIR *tlv;
 
 				/*
@@ -1508,7 +1502,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 			p += length;
 
 			if (vp->next &&
-			    (vp->next->attribute == vp->da->attribute))
+			    (vp->next->da->attr == vp->da->attr))
 				vp = vp->next;
 		} /* loop over num_entries */
 

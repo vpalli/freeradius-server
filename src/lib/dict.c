@@ -2447,7 +2447,7 @@ static size_t print_attr_oid(char *buffer, size_t size, unsigned int attr,
  *
  * @param da to free.
  */
-void dict_attr_free(DICT_ATTR * const *da)
+void dict_attr_free(DICT_ATTR const **da)
 {
 	DICT_ATTR **tmp;
 	
