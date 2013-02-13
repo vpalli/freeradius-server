@@ -19,7 +19,7 @@ rlm_expiration		OK
 rlm_expr		DONE
 rlm_files		DONE
 rlm_ippool		OK
-rlm_jradius
+rlm_jradius		REMOVED
 rlm_krb5		DONE
 rlm_ldap		DONE
 rlm_linelog		OK
