@@ -125,7 +125,7 @@ int getusersfile(const char *filename, PAIR_LIST **pair_list, const char *compat
 				 *	ensure it has '=='.
 				 */
 				if ((vp->da->vendor!= 0) ||
-						(vp->da->attribute < 0x100)) {
+						(vp->da->attr < 0x100)) {
 					if (!compat_mode) {
 						DEBUG("[%s]:%d WARNING! Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for user %s",
 								filename, entry->lineno,
@@ -154,10 +154,10 @@ int getusersfile(const char *filename, PAIR_LIST **pair_list, const char *compat
 					 *	On the write attributes
 					 *	become ==
 					 */
-					if ((vp->da->attribute >= 0x100) &&
-							(vp->da->attribute <= 0xffff) &&
-							(vp->da->attribute != PW_HINT) &&
-							(vp->da->attribute != PW_HUNTGROUP_NAME)) {
+					if ((vp->da->attr >= 0x100) &&
+							(vp->da->attr <= 0xffff) &&
+							(vp->da->attr != PW_HINT) &&
+							(vp->da->attr != PW_HUNTGROUP_NAME)) {
 						DEBUG("\tChanging '%s =' to '%s +='",
 								vp->da->name, vp->da->name);
 						vp->op = T_OP_ADD;
@@ -187,8 +187,8 @@ int getusersfile(const char *filename, PAIR_LIST **pair_list, const char *compat
 				 *	good warning message.
 				 */
 			         if ((vp->da->vendor == 0) &&
-					(vp->da->attribute > 0xff) &&
-					(vp->da->attribute > 1000)) {
+					(vp->da->attr > 0xff) &&
+					(vp->da->attr > 1000)) {
 					log_debug("[%s]:%d WARNING! Check item \"%s\"\n"
 							"\tfound in reply item list for user \"%s\".\n"
 							"\tThis attribute MUST go on the first line"
