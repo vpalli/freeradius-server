@@ -577,7 +577,8 @@ int modcall(int component, modcallable *c, REQUEST *request)
 					if (myresult == MOD_ACTION_RETURN) {
 						break;
 					}
-					vp = pairfind(vp->next, vp->da->attribute, vp->da->vendor, TAG_ANY);
+					vp = pairfind(vp->next, vp->da->attr,
+						      vp->da->vendor, TAG_ANY);
 
 					/*
 					 *	Delete the cached attribute,
